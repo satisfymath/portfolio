@@ -38,6 +38,11 @@ export function VideoBackgroundSection({
         video.playsInline = true;
         video.preload = 'auto';
 
+        // Ensure metadata is loaded for iOS
+        if (video.readyState < 1) {
+            video.load();
+        }
+
         // Reduced motion: autoplay loop
         if (prefersReducedMotion()) {
             video.loop = true;
@@ -65,7 +70,7 @@ export function VideoBackgroundSection({
                 trigger: section,
                 start: 'top top',
                 end: 'bottom bottom',
-                scrub: 0.5,
+                scrub: 1, // Smoother scrubbing
                 animation: timelineRef.current,
                 invalidateOnRefresh: true,
                 onUpdate: (self) => {
@@ -115,7 +120,9 @@ export function VideoBackgroundSection({
                     src={videoSrc}
                     muted
                     playsInline
+                    autoPlay={false}
                     preload="auto"
+                    {...{ 'webkit-playsinline': 'true' }}
                     style={{
                         position: 'absolute',
                         top: 0,
