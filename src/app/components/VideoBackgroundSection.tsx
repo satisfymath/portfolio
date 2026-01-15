@@ -52,31 +52,63 @@ export function VideoBackgroundSection({
         }
 
         const onLoadedMetadata = () => {
-            console.log(`[VideoBg:${videoId}] Loaded: ${video.duration.toFixed(2)}s`);
+            const width = video.videoWidth;
+            const height = video.videoHeight;
+            console.log(`[VideoBg:${videoId}] Metadata Loaded: ${video.duration.toFixed(2)}s, ${width}x${height}, ReadyState:${video.readyState}`);
 
-            video.pause();
-            video.currentTime = 0;
+            // iOS Hack: We must "play" the video to engage the decoder, then pause it immediately.
+            // Just setting currentTime on a never-played video often results in a black screen on iOS.
+            const playPromise = video.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    console.log(`[VideoBg:${videoId}] Kickstart play success, pausing now.`);
+                    video.pause();
+                    video.currentTime = 0;
+                    initializeScrollTrigger();
+                }).catch((error) => {
+                    console.warn(`[VideoBg:${videoId}] Kickstart play failed (likely AutoPlay restrictions):`, error);
+                    // Try to proceed anyway
+                    video.pause();
+                    initializeScrollTrigger();
+                });
+            } else {
+                video.pause();
+                initializeScrollTrigger();
+            }
+        };
 
+        const initializeScrollTrigger = () => {
             // Kill existing
             if (timelineRef.current) timelineRef.current.kill();
             if (scrollTriggerRef.current) scrollTriggerRef.current.kill();
 
+            console.log(`[VideoBg:${videoId}] Initializing GSAP timeline`);
+
             // Timeline animates video currentTime
             timelineRef.current = gsap.timeline({ defaults: { ease: 'none' } });
-            timelineRef.current.to(video, { currentTime: video.duration }, 0);
 
-            // ScrollTrigger: video plays as you scroll through section content
+            // Add visibility logger to tween
+            timelineRef.current.to(video, {
+                currentTime: video.duration,
+                onUpdate: function () {
+                    // Log only occasionally to avoid spam
+                    // const time = this.targets()[0].currentTime;
+                    // console.log(`[${videoId}] Time: ${time.toFixed(2)}`);
+                }
+            }, 0);
+
+            // ScrollTrigger
             scrollTriggerRef.current = ScrollTrigger.create({
                 trigger: section,
                 start: 'top top',
                 end: 'bottom bottom',
-                scrub: 1, // Smoother scrubbing
+                scrub: 1, // Smooth scrubbing
                 animation: timelineRef.current,
                 invalidateOnRefresh: true,
                 onUpdate: (self) => {
                     const pct = Math.round(self.progress * 100);
                     if (pct % 25 === 0) {
-                        console.log(`[${videoId}] ${pct}%`);
+                        console.log(`[${videoId}] Scroll: ${pct}%, VideoTime: ${video.currentTime.toFixed(2)}/${video.duration.toFixed(2)}`);
                     }
                 },
             });
@@ -84,12 +116,23 @@ export function VideoBackgroundSection({
             ScrollTrigger.refresh();
         };
 
+        const onError = (e: Event) => {
+            const target = e.target as HTMLVideoElement;
+            console.error(`[VideoBg:${videoId}] ERROR:`, target.error);
+        };
+
         video.addEventListener('loadedmetadata', onLoadedMetadata);
-        if (video.readyState >= 1) onLoadedMetadata();
+        video.addEventListener('error', onError);
+
+        if (video.readyState >= 1) {
+            console.log(`[VideoBg:${videoId}] Metadata already loaded via cache`);
+            onLoadedMetadata();
+        }
 
         return () => {
             console.log(`[VideoBg:${videoId}] Cleanup`);
             video.removeEventListener('loadedmetadata', onLoadedMetadata);
+            video.removeEventListener('error', onError);
             if (scrollTriggerRef.current) scrollTriggerRef.current.kill();
             if (timelineRef.current) timelineRef.current.kill();
         };
