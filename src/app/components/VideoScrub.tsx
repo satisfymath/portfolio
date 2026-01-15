@@ -1,9 +1,16 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { prefersReducedMotion } from '../lib/reducedMotion';
 
 gsap.registerPlugin(ScrollTrigger);
+
+// Detect iOS
+const isIOS = () => {
+    if (typeof window === 'undefined') return false;
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+};
 
 interface VideoScrubProps {
     src: string;
@@ -21,6 +28,7 @@ interface VideoScrubProps {
  * VideoScrub component - controls video playback via scroll position
  * With pin option: video stays fixed while all frames play
  * Children are rendered on top of the video
+ * iOS compatible: uses direct currentTime manipulation with ScrollTrigger onUpdate
  */
 export function VideoScrub({
     src,
@@ -38,18 +46,22 @@ export function VideoScrub({
     const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
     const timelineRef = useRef<gsap.core.Timeline | null>(null);
     const videoId = src.split('/').pop() || 'unknown';
+    const [isIOSDevice] = useState(isIOS);
 
     useEffect(() => {
         const video = videoRef.current;
         const container = containerRef.current;
         if (!video) return;
 
-        console.log(`[VideoScrub:${videoId}] Init pin=${pin}`);
+        const isiOS = isIOSDevice;
+        console.log(`[VideoScrub:${videoId}] Init pin=${pin} iOS=${isiOS}`);
 
-        // iOS/Safari autoplay requirements
+        // iOS/Safari autoplay requirements - set these before any interaction
         video.muted = true;
         video.playsInline = true;
         video.preload = 'auto';
+        // Force load on iOS
+        video.load();
 
         // Reduced motion: autoplay loop without scrub
         if (prefersReducedMotion()) {
@@ -77,29 +89,54 @@ export function VideoScrub({
             if (timelineRef.current) timelineRef.current.kill();
             if (scrollTriggerRef.current) scrollTriggerRef.current.kill();
 
-            // Create GSAP timeline that animates currentTime
-            timelineRef.current = gsap.timeline({ defaults: { ease: 'none' } });
-            timelineRef.current.to(video, { currentTime: video.duration }, 0);
-
             // ScrollTrigger configuration
             const endValue = end || `+=${scrubDuration}`;
 
-            scrollTriggerRef.current = ScrollTrigger.create({
-                trigger: triggerElement,
-                start,
-                end: endValue,
-                scrub: 0.5,
-                pin: pin,
-                pinSpacing: true,
-                animation: timelineRef.current,
-                invalidateOnRefresh: true,
-                onUpdate: (self) => {
-                    const pct = Math.round(self.progress * 100);
-                    if (pct % 25 === 0) {
-                        console.log(`[${videoId}] ${pct}%`);
-                    }
-                },
-            });
+            if (isiOS) {
+                // iOS: Use direct currentTime manipulation in onUpdate
+                // This is more compatible with iOS Safari
+                scrollTriggerRef.current = ScrollTrigger.create({
+                    trigger: triggerElement,
+                    start,
+                    end: endValue,
+                    scrub: true,
+                    pin: pin,
+                    pinSpacing: true,
+                    invalidateOnRefresh: true,
+                    onUpdate: (self) => {
+                        // Directly set currentTime based on scroll progress
+                        const targetTime = self.progress * video.duration;
+                        if (Math.abs(video.currentTime - targetTime) > 0.05) {
+                            video.currentTime = targetTime;
+                        }
+                        const pct = Math.round(self.progress * 100);
+                        if (pct % 25 === 0) {
+                            console.log(`[${videoId}] ${pct}%`);
+                        }
+                    },
+                });
+            } else {
+                // Desktop: Use GSAP timeline animation for smoother playback
+                timelineRef.current = gsap.timeline({ defaults: { ease: 'none' } });
+                timelineRef.current.to(video, { currentTime: video.duration }, 0);
+
+                scrollTriggerRef.current = ScrollTrigger.create({
+                    trigger: triggerElement,
+                    start,
+                    end: endValue,
+                    scrub: 0.5,
+                    pin: pin,
+                    pinSpacing: true,
+                    animation: timelineRef.current,
+                    invalidateOnRefresh: true,
+                    onUpdate: (self) => {
+                        const pct = Math.round(self.progress * 100);
+                        if (pct % 25 === 0) {
+                            console.log(`[${videoId}] ${pct}%`);
+                        }
+                    },
+                });
+            }
 
             ScrollTrigger.refresh();
         };
@@ -124,7 +161,7 @@ export function VideoScrub({
                 timelineRef.current = null;
             }
         };
-    }, [src, trigger, start, end, videoId, pin, scrubDuration]);
+    }, [src, trigger, start, end, videoId, pin, scrubDuration, isIOSDevice]);
 
     // Pinned version: wrap video in a container with children overlay
     if (pin) {
@@ -147,6 +184,7 @@ export function VideoScrub({
                     poster={poster}
                     muted
                     playsInline
+                    autoPlay={false}
                     preload="auto"
                     style={{
                         position: 'absolute',
@@ -189,6 +227,7 @@ export function VideoScrub({
             poster={poster}
             muted
             playsInline
+            autoPlay={false}
             preload="auto"
         />
     );
