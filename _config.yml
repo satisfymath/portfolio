@@ -1,0 +1,13 @@
+plugins:
+  - jekyll-feed
+
+exclude:
+  - node_modules
+  - package.json
+  - package-lock.json
+  - tsconfig.json
+  - vite.config.ts
+  - eslint.config.js
+
+# Disable Jekyll completely
+# GitHub will use this to skip Jekyll processing
