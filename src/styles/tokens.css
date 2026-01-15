@@ -1,0 +1,59 @@
+/* =========================================
+   Brutalist Precision Noir Design System
+   ========================================= */
+
+:root {
+  /* Palette */
+  --bg: #07080A;
+  --surface: #0C0E12;
+  --surface-elevated: #12151A;
+  --text: #EDEFF2;
+  --muted: rgba(237, 239, 242, 0.68);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-hover: rgba(255, 255, 255, 0.16);
+  
+  /* Accent: Neon subtle */
+  --accent: #70FFB7;
+  --accent-dim: rgba(112, 255, 183, 0.18);
+  --accent-glow: rgba(112, 255, 183, 0.35);
+  
+  /* Layout */
+  --radius: 14px;
+  --radius-sm: 8px;
+  --max: 1120px;
+  --gap: 24px;
+  --gap-lg: 48px;
+  
+  /* Typography */
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-title: "Orbitron", var(--font-sans);
+  --font-dots: "Raleway Dots", var(--font-sans);
+  --font-code: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  
+  /* Font sizes */
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+  --text-5xl: 3rem;
+  --text-6xl: 3.75rem;
+  
+  /* Transitions */
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+}
+
+/* Mobile-first responsive tokens */
+@media (max-width: 768px) {
+  :root {
+    --gap: 16px;
+    --gap-lg: 32px;
+  }
+}

@@ -1,0 +1,250 @@
+# llm_porfolio_designe.txt
+# Rol del agente:
+Eres un/a Senior Frontend Engineer + Creative Developer (motion/scroll) con foco en performance, accesibilidad y diseño minimalista premium.
+Tu tarea es crear desde 0 un portafolio estático (1 sola página) para una consultoría/empresa de software (Chile), desplegable en GitHub Pages.
+
+## 0) Objetivo del sitio (lo más importante)
+Construir una landing/portafolio ultra-minimalista y cinematográfica (inspiración “trailer / GTA6 vibes”, sin caer en exceso), donde:
+- La navegación sea por scroll (secciones tipo “caps”).
+- Las animaciones sean suaves, responsivas y no rompan el performance en móvil.
+- Se presenten proyectos (públicos y privados) y servicios (scraping, data/ML, automatización n8n, optimización, web apps).
+- Termine en un CTA claro para convertir (contacto y agendar).
+- Todo deployable en GitHub Pages con build de Vite.
+
+## 1) Stack técnico (decisión)
+- Vite + React + TypeScript
+- CSS: Tailwind (recomendado) o CSS Modules (elige 1; si Tailwind, deja tokens en :root también)
+- Animación:
+  - GSAP (core) + ScrollTrigger
+  - Lenis para smooth scrolling
+- Utilidades:
+  - clsx (opcional)
+  - vite-plugin-svgr (opcional si uso SVG como React components)
+- Calidad:
+  - ESLint + Prettier
+  - Lighthouse-friendly (performance + a11y)
+- Deployment:
+  - GitHub Pages con GitHub Actions (workflow de Vite)
+
+## 2) Reglas duras (no negociables)
+- Mobile-first: el sitio debe sentirse igual de “premium” en teléfono.
+- No usar librerías pesadas innecesarias (evitar 3D si no aporta; si agregas, que sea opcional).
+- Respeta preferencias del usuario:
+  - prefers-reduced-motion: si está activo, reduce/evita animaciones fuertes.
+- Mantener el diseño minimalista:
+  - Paleta: fondo oscuro (near-black), tipografía blanca/gris, 1 acento neon (verde/azul) MUY sutil.
+  - Mucho espacio en blanco (negativo), grid sólido, y texto corto.
+- No inventar datos: usa placeholders claros (TODO) para nombres, links, métricas.
+- No generar archivos .md innecesarios (solo README mínimo si es imprescindible).
+- No incluir dependencias con licencias dudosas (si hay duda, no uses).
+- Todo el copy debe ser en español neutro (Chile-friendly), con opción futura a EN.
+
+## 3) Estructura del sitio (secciones y narrativa)
+La página será un “scroll-story”:
+
+A) PRELOADER (rápido)
+- Preloader de 500ms–1200ms máximo (skip automático).
+- Un logo/monograma simple + línea de carga minimal.
+
+B) HERO (impacto)
+- Headline grande: “Software a medida, datos y automatización para escalar operaciones.”
+- Subheadline: 1 línea: “De prototipo a producción: web, scraping, ML, optimización y pipelines n8n.”
+- “Type-on” effect en una línea (simulación de escritura) para 3–5 palabras clave (rotación):
+  - “web apps”, “data pipelines”, “scraping”, “optimización”, “IA aplicada”
+- CTA primario: “Hablemos” (scroll a contacto)
+- CTA secundario: “Ver proyectos” (scroll a proyectos)
+
+Animación hero:
+- Entrada con GSAP: fade + y translate, stagger en textos.
+- Microinteracciones: underline animado en hover, cursor sutil (opcional).
+
+C) PROOF STRIP (credenciales rápidas)
+- 3 “pill chips” o tarjetas pequeñas:
+  - “End-to-end: diseño → deploy”
+  - “Automatización real (n8n + APIs)”
+  - “Decisiones con datos (ML/optimización)”
+
+D) PROYECTOS (la parte central)
+- Formato recomendado: lista vertical con “cards” grandes + preview.
+- Cada proyecto tiene:
+  - Nombre, 1-liner, tags (React, Python, n8n, Optimización…)
+  - Estado: Público / Privado / Confidencial
+  - Botón:
+    - Público: “Ver demo / repo”
+    - Privado: “Ver caso (resumen)”
+    - Confidencial: “Info bajo NDA” + CTA “Solicitar conversación”
+- Agrega 5–8 items con placeholders (no inventes nombres reales).
+
+Animación proyectos:
+- ScrollTrigger: cada card entra con reveal (clip-path o mask) + parallax leve.
+- Un “pin” opcional para el header “Proyectos” durante 1–2 pantallas.
+
+E) SERVICIOS (consultoría SaaS/dev)
+- Grid de servicios, 6–8:
+  1) Desarrollo web (Vite/React/Next)
+  2) Backend + APIs + Auth
+  3) Web scraping + ETL
+  4) Data analytics + dashboards
+  5) ML engineering (pipelines, features, evaluación)
+  6) Automatización n8n (operaciones, integraciones)
+  7) Optimización matemática (Pyomo/Pulp, planificación, costos)
+  8) DevOps ligero (Docker, deploy, CI/CD)
+- Cada servicio: título + 1 línea + “outputs” (ej: “pipeline en producción”, “dashboard”, “bot de alertas”, etc.)
+
+Animación servicios:
+- “horizontal drift” sutil al scrollear o reveal por filas.
+- Hover: glow muy sutil en borde.
+
+F) PROCESO (cómo trabajas)
+- 4 pasos:
+  - Diagnóstico (1–3 días)
+  - Prototipo (1–2 semanas)
+  - Producción (2–6 semanas)
+  - Mantención / evolución (mensual)
+- Esto genera confianza y vende.
+
+G) STACK / HERRAMIENTAS
+- Logos minimal (SVG) o texto:
+  - TS, React, Python, Postgres, Docker, n8n, GCP, GitHub Actions
+- Evitar “wall of logos”: máximo 10.
+
+H) TESTIMONIAL / RESULTADOS (opcional)
+- Si no hay testimonios reales, usa “principios” en vez de inventar.
+- Ej: “Menos fricción operativa”, “Automatización medible”, “Confiabilidad y trazabilidad”.
+
+I) CONTACTO (cierre fuerte)
+- Tarjeta final con:
+  - Email
+  - LinkedIn
+  - WhatsApp (opcional)
+  - Botón “Agendar” (placeholder a Calendly)
+- Formulario simple (sin backend) que abre mailto con asunto prellenado.
+- Footer: “Santiago, Chile · © {año} · Todos los derechos reservados” (placeholder).
+
+## 4) Diseño (tokens y estilo)
+- Tipografía:
+  - 1 sans moderna (ej: Inter / Geist / Satoshi). Elegir una (google font).
+- Escala tipográfica:
+  - H1 muy grande (clamp)
+  - Body legible (16–18px)
+- Layout:
+  - Max width ~ 1100–1200px, padding lateral generoso.
+- Efectos “GTA6 vibe” pero minimal:
+  - 1 overlay de grano (CSS) súper suave
+  - 1 gradiente radial muy tenue
+  - Acento neon solo en detalles (líneas, bordes, subrayados)
+
+## 5) Animación: especificación técnica
+### Lenis
+- Integrar Lenis para smooth scroll.
+- Asegurar que el scroll nativo funcione si JS falla.
+- Sync con GSAP ScrollTrigger para que los triggers se actualicen con el RAF.
+
+### GSAP + ScrollTrigger
+- Usar gsap.context() en React para limpiar animaciones al unmount.
+- Animaciones por sección:
+  - Hero: timeline de entrada
+  - Projects: reveal por card + parallax leve en imagen
+  - Services: stagger por fila
+  - Process: pin leve o scrub suave
+- Implementar “reduced motion”:
+  - Si prefers-reduced-motion: reduce duración, elimina scrub/pin.
+
+### Typewriter
+- Implementar un “type-on”:
+  - Opción A: GSAP TextPlugin (si lo usas, configúralo limpio)
+  - Opción B (fallback): efecto propio con interval + caret CSS
+- No saturar: solo 1 línea en hero.
+
+## 6) Arquitectura del código (estructura de carpetas)
+- src/
+  - app/
+    - App.tsx
+    - sections/
+      - Hero.tsx
+      - Proof.tsx
+      - Projects.tsx
+      - Services.tsx
+      - Process.tsx
+      - Stack.tsx
+      - Contact.tsx
+    - components/
+      - Container.tsx
+      - SectionTitle.tsx
+      - ProjectCard.tsx
+      - ServiceCard.tsx
+      - CTAButton.tsx
+    - data/
+      - projects.ts
+      - services.ts
+  - styles/
+    - globals.css (o tailwind.css)
+    - tokens.css (si no usas tailwind)
+  - lib/
+    - motion/
+      - lenis.ts
+      - gsap.ts
+      - reducedMotion.ts
+- public/
+  - og.png (placeholder)
+  - favicon.svg
+
+## 7) Data model (proyectos/servicios)
+- projects.ts incluye:
+  - id, title, tagline, tags[], visibility: "public"|"private"|"confidential"
+  - links: { demo?: string; repo?: string; caseStudy?: string }
+  - highlights[] (3 bullets)
+- services.ts incluye:
+  - id, title, description, outcomes[] (2–3 items)
+
+## 8) Pasos exactos de implementación (hazlo en orden)
+1) Crear proyecto:
+   - npm create vite@latest portfolio -- --template react-ts
+   - instalar dependencias: gsap, @studio-freight/lenis, clsx (opcional)
+2) Setup calidad:
+   - ESLint + Prettier (config mínimo)
+3) CSS:
+   - Tailwind (si eliges Tailwind) o CSS Modules + tokens
+4) Layout base + secciones en blanco
+5) Implementar Lenis (lib/motion/lenis.ts)
+6) Implementar gsap utils (lib/motion/gsap.ts) + registerPlugin(ScrollTrigger)
+7) Hero animation + typewriter
+8) Projects scroll reveal
+9) Services + Process animations
+10) Reduced motion support
+11) SEO básico:
+   - title, meta description, og tags
+12) GitHub Pages:
+   - configurar base en vite.config.ts si corresponde
+   - agregar workflow de GitHub Actions para build+deploy
+13) Revisar Lighthouse y corregir:
+   - imágenes livianas, lazy-load, font-display: swap
+14) Listo
+
+## 9) Snippets clave (inclúyelos en el repo)
+### Lenis + ScrollTrigger sync (ejemplo)
+- Implementa una función initLenis() y úsala en App.tsx (useEffect).
+- Sincroniza con RAF y ScrollTrigger.update.
+
+### ScrollTrigger básico (ejemplo)
+- En cada sección, crea un gsap.timeline con ScrollTrigger.
+- Usa matchMedia para desktop vs mobile.
+
+## 10) Criterios de aceptación (Definition of Done)
+- Build OK y deploy OK en GitHub Pages.
+- Mobile: 60fps “feel” razonable, sin jank evidente.
+- Animaciones limpias, no mareantes.
+- reduced-motion funciona.
+- Proyectos distinguen público/privado/confidencial.
+- CTA final claro y visible.
+- Código mantenible, componentes simples, sin overengineering.
+
+## 11) Entregables
+Genera el repo completo con:
+- Código fuente (Vite + React + TS)
+- Workflow deploy a GitHub Pages
+- Un set de datos placeholder (projects/services)
+- Diseño final minimalista + animaciones GSAP + Lenis integradas
+- Sin archivos extra innecesarios
+
+# Fin del prompt.

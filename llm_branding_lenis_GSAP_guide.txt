@@ -1,0 +1,609 @@
+# llm_branding_lenis_GSAP_guide.txt
+# Objetivo
+Montar una landing Brutalist Precision Noir (Vite + React + TS) con:
+- Smooth scroll (Lenis)
+- Animaciones (GSAP + ScrollTrigger)
+- 3 videos mp4 (97 frames) que se “scrubbean” con el scroll (control de currentTime)
+- Tipografías:
+  - Orbitron (títulos / marca)
+  - Raleway Dots (números dinámicos / índices)
+  - Google Sans Code (bloques de “código” / microtexto técnico)
+
+------------------------------------------------------------
+1) Setup del proyecto
+------------------------------------------------------------
+
+1.1 Crear proyecto
+- npm create vite@latest portfolio -- --template react-ts
+- cd portfolio
+- npm i gsap @studio-freight/lenis
+- npm i -D eslint prettier
+
+1.2 Estructura recomendada
+Crea esta estructura:
+
+/public
+  /media
+    /video
+      hero_a.mp4
+      hero_b.mp4
+      hero_c.mp4
+
+/src
+  /app
+    App.tsx
+    main.tsx
+    /lib
+      lenis.ts
+      motion.ts
+      reducedMotion.ts
+    /components
+      VideoScrub.tsx
+      Section.tsx
+      HUD.tsx
+    /sections
+      Hero.tsx
+      Projects.tsx
+      Contact.tsx
+  /styles
+    globals.css
+    tokens.css
+
+1.3 Colocar tus mp4
+- Tienes 3 videos (97 frames). Renómbralos a:
+  hero_a.mp4, hero_b.mp4, hero_c.mp4
+- Muévelos a:
+  public/media/video/
+
+NOTA: en Vite, todo lo que está en /public se sirve tal cual.
+Los src se referencian como: "/media/video/hero_a.mp4"
+
+------------------------------------------------------------
+2) Tipografías (Orbitron, Raleway Dots, Google Sans Code)
+------------------------------------------------------------
+
+IMPORTANTE: para evitar problemas con links en el contenido, pega estos <link> en index.html.
+Archivo: /index.html (en la raíz del proyecto Vite)
+
+Agrega dentro de <head>:
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Raleway+Dots&family=Google+Sans+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+------------------------------------------------------------
+3) Tokens Brutalist Precision Noir
+------------------------------------------------------------
+
+Archivo: /src/styles/tokens.css
+
+:root{
+  --bg: #07080A;
+  --surface: #0C0E12;
+  --text: #EDEFF2;
+  --muted: rgba(237,239,242,0.68);
+  --line: rgba(255,255,255,0.08);
+  --accent: #70FFB7;
+  --accentDim: rgba(112,255,183,0.18);
+
+  --radius: 14px;
+  --max: 1120px;
+
+  --font-sans: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  --font-title: "Orbitron", var(--font-sans);
+  --font-dots: "Raleway Dots", var(--font-sans);
+  --font-code: "Google Sans Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+------------------------------------------------------------
+4) Global styles + grain + grid (muy sutil)
+------------------------------------------------------------
+
+Archivo: /src/styles/globals.css
+
+@import "./tokens.css";
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+
+* { box-sizing: border-box; }
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; }
+
+.container {
+  width: min(var(--max), calc(100% - 48px));
+  margin: 0 auto;
+}
+
+.h1 {
+  font-family: var(--font-title);
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  font-size: clamp(34px, 4vw, 64px);
+  line-height: 1.05;
+}
+
+.mono {
+  font-family: var(--font-code);
+  color: var(--muted);
+}
+
+.dots {
+  font-family: var(--font-dots);
+  letter-spacing: 0.08em;
+}
+
+/* overlay grain (opcional, súper tenue) */
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background-image: url("/media/grain.png"); /* si luego generas un tile */
+  background-size: 256px 256px;
+}
+
+/* líneas/grilla tenue */
+.gridOverlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.14;
+  background:
+    linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 120px 120px;
+  mask-image: radial-gradient(circle at 30% 20%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 70%);
+}
+
+------------------------------------------------------------
+5) Lenis (smooth scroll) + sincronización con GSAP
+------------------------------------------------------------
+
+Archivo: /src/app/lib/lenis.ts
+
+import Lenis from "@studio-freight/lenis";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
+
+export function initLenis() {
+  const lenis = new Lenis({
+    lerp: 0.10,
+    smoothWheel: true,
+    smoothTouch: false, // móvil: evita sensación rara; puedes cambiarlo luego
+  });
+
+  lenis.on("scroll", () => ScrollTrigger.update());
+
+  gsap.ticker.add((time) => {
+    lenis.raf(time * 1000);
+  });
+
+  gsap.ticker.lagSmoothing(0);
+
+  return lenis;
+}
+
+------------------------------------------------------------
+6) reduced motion (fallback pro)
+------------------------------------------------------------
+
+Archivo: /src/app/lib/reducedMotion.ts
+
+export function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+------------------------------------------------------------
+7) Componente clave: VideoScrub (controla mp4 con scroll)
+------------------------------------------------------------
+
+Archivo: /src/app/components/VideoScrub.tsx
+
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { prefersReducedMotion } from "../lib/reducedMotion";
+
+gsap.registerPlugin(ScrollTrigger);
+
+type Props = {
+  src: string;               // "/media/video/hero_a.mp4"
+  trigger: string;           // selector del section (ej: "#hero")
+  start?: string;            // "top top"
+  end?: string;              // "+=1200"
+  className?: string;
+  poster?: string;
+};
+
+export function VideoScrub({
+  src,
+  trigger,
+  start = "top top",
+  end = "+=1200",
+  className,
+  poster,
+}: Props) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = ref.current;
+    if (!video) return;
+
+    // iOS/autoplay safe
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = "auto";
+
+    // reduced motion: no scrub, solo loop
+    if (prefersReducedMotion()) {
+      video.loop = true;
+      video.autoplay = true;
+      video.play().catch(() => {});
+      return;
+    }
+
+    let st: ScrollTrigger | null = null;
+
+    const onLoaded = () => {
+      // importante: pausar para que scroll controle currentTime
+      video.pause();
+      video.currentTime = 0;
+
+      // GSAP animando currentTime según el progreso del scroll
+      const tl = gsap.timeline({ defaults: { ease: "none" } });
+      tl.to(video, { currentTime: video.duration }, 0);
+
+      st = ScrollTrigger.create({
+        trigger,
+        start,
+        end,
+        scrub: true,
+        animation: tl,
+        invalidateOnRefresh: true,
+      });
+
+      ScrollTrigger.refresh();
+    };
+
+    video.addEventListener("loadedmetadata", onLoaded);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", onLoaded);
+      st?.kill();
+    };
+  }, [src, trigger, start, end]);
+
+  return (
+    <video
+      ref={ref}
+      className={className}
+      src={src}
+      poster={poster}
+      muted
+      playsInline
+      preload="auto"
+    />
+  );
+}
+
+------------------------------------------------------------
+8) Sección wrapper (layout consistente)
+------------------------------------------------------------
+
+Archivo: /src/app/components/Section.tsx
+
+import { ReactNode } from "react";
+
+export function Section({
+  id,
+  children,
+  className,
+}: {
+  id: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section id={id} className={className} style={{ position: "relative" }}>
+      {children}
+    </section>
+  );
+}
+
+------------------------------------------------------------
+9) HUD / Progress Bar (opcional pero queda “caro”)
+------------------------------------------------------------
+
+Archivo: /src/app/components/HUD.tsx
+
+import { useEffect, useState } from "react";
+
+export function HUD() {
+  const [p, setP] = useState(0);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      setP(max > 0 ? (h.scrollTop / max) : 0);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  return (
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 2, zIndex: 60 }}>
+      <div style={{
+        height: "100%",
+        width: `${p * 100}%`,
+        background: "var(--accent)",
+        opacity: 0.65
+      }} />
+    </div>
+  );
+}
+
+------------------------------------------------------------
+10) Hero: video A scrub + texto encima
+------------------------------------------------------------
+
+Archivo: /src/app/sections/Hero.tsx
+
+import { Section } from "../components/Section";
+import { VideoScrub } from "../components/VideoScrub";
+
+export function Hero() {
+  return (
+    <Section id="hero">
+      {/* Video de fondo */}
+      <VideoScrub
+        src="/media/video/hero_a.mp4"
+        trigger="#hero"
+        start="top top"
+        end="+=1400"
+        className="heroVideo"
+      />
+
+      {/* Overlay content */}
+      <div className="heroContent container">
+        <div className="dots" style={{ color: "var(--muted)", marginBottom: 12 }}>
+          00 / INTRO
+        </div>
+        <h1 className="h1">Software · Datos · Automatización</h1>
+        <p style={{ color: "var(--muted)", fontSize: 18, maxWidth: 620, marginTop: 14 }}>
+          Construyo sistemas que reducen fricción operativa y escalan decisiones con datos.
+        </p>
+
+        <div className="mono" style={{ marginTop: 18 }}>
+          web apps / scraping / n8n / ML / optimización
+        </div>
+
+        <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+          <a className="btnPrimary" href="#contact">Hablemos</a>
+          <a className="btnGhost" href="#projects">Ver proyectos</a>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+Y estilos para hero:
+Archivo: /src/styles/globals.css (añade al final)
+
+.heroVideo{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(1.05) brightness(0.95);
+}
+
+.heroContent{
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 96px 0;
+}
+
+.btnPrimary{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #07110C;
+  font-weight: 600;
+}
+
+.btnGhost{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+
+------------------------------------------------------------
+11) Proyectos: video B scrub (otro trigger)
+------------------------------------------------------------
+
+Archivo: /src/app/sections/Projects.tsx
+
+import { Section } from "../components/Section";
+import { VideoScrub } from "../components/VideoScrub";
+
+export function Projects() {
+  return (
+    <Section id="projects">
+      <VideoScrub
+        src="/media/video/hero_b.mp4"
+        trigger="#projects"
+        start="top bottom"
+        end="bottom top"
+        className="sectionVideo"
+      />
+      <div className="container" style={{ position: "relative", padding: "120px 0" }}>
+        <div className="dots" style={{ color: "var(--muted)", marginBottom: 12 }}>
+          01 / PROYECTOS
+        </div>
+        <h2 className="h1" style={{ fontSize: "clamp(28px, 3vw, 44px)" }}>
+          Casos y sistemas construidos
+        </h2>
+        <p style={{ color: "var(--muted)", marginTop: 12, maxWidth: 720 }}>
+          Público, privado y confidencial (NDA). Cards limpias, con tags y highlights.
+        </p>
+      </div>
+    </Section>
+  );
+}
+
+Estilo para sectionVideo:
+(en globals.css)
+
+.sectionVideo{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.60;
+  filter: contrast(1.05) brightness(0.85);
+}
+
+------------------------------------------------------------
+12) Contacto: video C scrub (cierre)
+------------------------------------------------------------
+
+Archivo: /src/app/sections/Contact.tsx
+
+import { Section } from "../components/Section";
+import { VideoScrub } from "../components/VideoScrub";
+
+export function Contact() {
+  return (
+    <Section id="contact">
+      <VideoScrub
+        src="/media/video/hero_c.mp4"
+        trigger="#contact"
+        start="top bottom"
+        end="bottom top"
+        className="sectionVideo"
+      />
+      <div className="container" style={{ position: "relative", padding: "140px 0" }}>
+        <div className="dots" style={{ color: "var(--muted)", marginBottom: 12 }}>
+          04 / CONTACTO
+        </div>
+        <h2 className="h1" style={{ fontSize: "clamp(28px, 3vw, 44px)" }}>
+          Si quieres velocidad y control, conversemos.
+        </h2>
+
+        <div style={{
+          marginTop: 24,
+          border: "1px solid var(--line)",
+          borderRadius: "var(--radius)",
+          background: "rgba(12,14,18,0.60)",
+          padding: 18,
+          maxWidth: 560
+        }}>
+          <div className="mono">EMAIL</div>
+          <div style={{ marginTop: 6 }}>tu-correo@dominio.cl</div>
+
+          <div className="mono" style={{ marginTop: 14 }}>LINKEDIN</div>
+          <div style={{ marginTop: 6 }}>linkedin.com/in/tu-perfil</div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+------------------------------------------------------------
+13) App principal (montaje total)
+------------------------------------------------------------
+
+Archivo: /src/app/App.tsx
+
+import { useEffect } from "react";
+import { initLenis } from "./lib/lenis";
+import { HUD } from "./components/HUD";
+import { Hero } from "./sections/Hero";
+import { Projects } from "./sections/Projects";
+import { Contact } from "./sections/Contact";
+
+export default function App() {
+  useEffect(() => {
+    const lenis = initLenis();
+    return () => {
+      // Lenis no siempre tiene destroy según versión; si existe, úsalo.
+      // @ts-ignore
+      if (lenis?.destroy) lenis.destroy();
+    };
+  }, []);
+
+  return (
+    <>
+      <HUD />
+      {/* overlays opcionales */}
+      {/* <div className="grain" /> */}
+      {/* <div className="gridOverlay" /> */}
+
+      <Hero />
+      <Projects />
+      <Contact />
+    </>
+  );
+}
+
+Archivo: /src/app/main.tsx
+
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import "../styles/globals.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+------------------------------------------------------------
+14) Nota clave sobre “97 frames” y suavidad
+------------------------------------------------------------
+
+- No necesitas saber FPS: el scrub usa video.duration.
+- Si el video “salta”:
+  - aumenta preload y espera loadedmetadata (ya lo hacemos)
+  - prueba exportar H.264 + yuv420p
+- Si quieres “más suave” con Lenis:
+  - usa end "+=1400" o "+=1800" para más recorrido de scroll => más control fino del currentTime.
+
+------------------------------------------------------------
+15) DoD (listo para producción)
+------------------------------------------------------------
+
+- 3 secciones con 3 mp4 controlados por scroll (scrub) funcionando.
+- Lenis + ScrollTrigger sincronizados (sin desync).
+- Tipografías aplicadas (Orbitron / Raleway Dots / Google Sans Code).
+- Visual Brutalist Precision Noir consistente.
+- Reduced motion: si el user lo pide, videos solo loop (no scrub).
+
+# FIN
