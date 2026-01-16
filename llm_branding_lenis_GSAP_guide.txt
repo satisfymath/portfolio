@@ -606,4 +606,477 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 - Visual Brutalist Precision Noir consistente.
 - Reduced motion: si el user lo pide, videos solo loop (no scrub).
 
-# FIN
+------------------------------------------------------------
+16) ⚠️ COMPATIBILIDAD iOS SAFARI (CRÍTICO)
+------------------------------------------------------------
+
+iOS Safari tiene restricciones estrictas para videos. Sin estos ajustes,
+los videos aparecerán en negro o no responderán al scroll.
+
+16.1 Atributos HTML obligatorios para <video>:
+
+<video
+  ref={videoRef}
+  src={videoSrc}
+  muted                              // OBLIGATORIO para autoplay/scrub
+  playsInline                        // OBLIGATORIO: evita fullscreen automático
+  autoPlay={false}                   // Evita conflictos con scrub
+  preload="auto"                     // Carga anticipada de frames
+  {...{ 'webkit-playsinline': 'true' }}  // Legacy iOS Safari
+/>
+
+16.2 Forzar carga en iOS:
+
+iOS a veces no carga metadatos hasta que se interactúa.
+Forzar con video.load() si readyState < 1:
+
+useEffect(() => {
+  const video = videoRef.current;
+  if (!video) return;
+  
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  
+  // CRÍTICO: Forzar carga en iOS
+  if (video.readyState < 1) {
+    video.load();
+  }
+  // ...
+}, []);
+
+16.3 "Kickstart" del video (anti pantalla negra):
+
+iOS no renderiza frames hasta que el video se haya "reproducido" al menos una vez.
+Hack: llamar play() y luego pause() inmediatamente para activar el decodificador:
+
+const onLoadedMetadata = () => {
+  // iOS HACK: Kickstart - activar decodificador
+  const playPromise = video.play();
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      console.log('Kickstart exitoso');
+      video.pause();
+      video.currentTime = 0;
+      initializeScrollTrigger();
+    }).catch((error) => {
+      console.warn('Kickstart falló:', error);
+      // Continuar de todas formas
+      video.pause();
+      initializeScrollTrigger();
+    });
+  } else {
+    video.pause();
+    initializeScrollTrigger();
+  }
+};
+
+------------------------------------------------------------
+17) CODIFICACIÓN DE VIDEO PARA SCRUBBING (GOP bajo)
+------------------------------------------------------------
+
+El "scrubbing" (controlar video con scroll) requiere saltar a cualquier
+frame instantáneamente. Los videos normales tienen Keyframes cada ~250 frames
+lo que causa "saltos" o "stuttering" al hacer scrub.
+
+17.1 Solución: GOP (Group of Pictures) bajo
+
+Recodifica con Keyframe cada 4 frames (-g 4):
+
+ffmpeg -y -i input.mp4 \
+  -c:v libopenh264 \       # O libx264 si está disponible
+  -g 4 \                   # Keyframe cada 4 frames (CRUCIAL)
+  -keyint_min 4 \          # Mínimo entre keyframes
+  -pix_fmt yuv420p \       # Compatible con todos los navegadores
+  -movflags +faststart \   # Metadatos al inicio (streaming)
+  -an \                    # Sin audio (innecesario para scrub)
+  output.mp4
+
+17.2 Verificar codec del video:
+
+ffprobe -v quiet -show_streams -select_streams v:0 video.mp4 | grep -E "codec_name|profile|level|pix_fmt"
+
+Resultado esperado:
+- codec_name=h264
+- profile=Baseline (o Main)
+- pix_fmt=yuv420p
+
+17.3 Verificar posición del moov atom (faststart):
+
+ffprobe -v trace video.mp4 2>&1 | grep -i "moov\|ftyp" | head -5
+
+El "moov" debe aparecer ANTES que "mdat" para streaming rápido.
+
+------------------------------------------------------------
+18) DEBUGGING MÓVIL CON vConsole
+------------------------------------------------------------
+
+Para ver console.log/errors en iPhone sin Mac/Safari inspector:
+
+18.1 Instalar:
+
+npm install vconsole
+
+18.2 Activar en main.tsx:
+
+import VConsole from 'vconsole';
+
+// Activar para debugging (quitar en producción final)
+if (import.meta.env.PROD || import.meta.env.DEV) {
+  new VConsole();
+}
+
+18.3 Uso:
+
+- Aparece un botón verde "vConsole" abajo a la derecha
+- Pestaña "Log": ver console.log/warn/error
+- Pestaña "Network": ver requests HTTP (videos .mp4, etc.)
+- Pestaña "Element": inspeccionar DOM
+- Filtrar por "Error" para encontrar problemas rápidamente
+
+18.4 Quitar para producción:
+
+Comentar o eliminar `new VConsole()` antes de deploy final.
+O usar condicional: `if (location.search.includes('debug'))`.
+
+------------------------------------------------------------
+19) COMPONENTE VideoBackgroundSection (patrón sticky)
+------------------------------------------------------------
+
+Patrón para video de fondo que se queda fijo mientras el contenido
+pasa encima. Usa position: sticky en lugar de fixed.
+
+import { useEffect, useRef, type ReactNode } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { prefersReducedMotion } from '../lib/reducedMotion';
+
+gsap.registerPlugin(ScrollTrigger);
+
+interface Props {
+  id: string;
+  videoSrc: string;
+  children: ReactNode;
+}
+
+export function VideoBackgroundSection({ id, videoSrc, children }: Props) {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
+  const timelineRef = useRef<gsap.core.Timeline | null>(null);
+  const videoId = videoSrc.split('/').pop() || 'unknown';
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    const video = videoRef.current;
+    if (!section || !video) return;
+
+    console.log(`[VideoBg:${videoId}] Init`);
+
+    // Setup iOS-compatible
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'auto';
+    
+    if (video.readyState < 1) {
+      video.load();
+    }
+
+    if (prefersReducedMotion()) {
+      video.loop = true;
+      video.autoplay = true;
+      video.play().catch(() => {});
+      return;
+    }
+
+    const onLoadedMetadata = () => {
+      console.log(`[VideoBg:${videoId}] Loaded: ${video.duration.toFixed(2)}s, ${video.videoWidth}x${video.videoHeight}`);
+      
+      // iOS Kickstart
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          console.log(`[VideoBg:${videoId}] Kickstart OK`);
+          video.pause();
+          video.currentTime = 0;
+          initScrollTrigger();
+        }).catch((err) => {
+          console.warn(`[VideoBg:${videoId}] Kickstart failed:`, err);
+          video.pause();
+          initScrollTrigger();
+        });
+      } else {
+        video.pause();
+        initScrollTrigger();
+      }
+    };
+
+    const initScrollTrigger = () => {
+      if (timelineRef.current) timelineRef.current.kill();
+      if (scrollTriggerRef.current) scrollTriggerRef.current.kill();
+
+      timelineRef.current = gsap.timeline({ defaults: { ease: 'none' } });
+      timelineRef.current.to(video, { currentTime: video.duration }, 0);
+
+      scrollTriggerRef.current = ScrollTrigger.create({
+        trigger: section,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 1,  // Suavizado de 1 segundo
+        animation: timelineRef.current,
+        invalidateOnRefresh: true,
+        onUpdate: (self) => {
+          const pct = Math.round(self.progress * 100);
+          if (pct % 25 === 0) {
+            console.log(`[${videoId}] ${pct}%`);
+          }
+        },
+      });
+      ScrollTrigger.refresh();
+    };
+
+    const onError = (e: Event) => {
+      const target = e.target as HTMLVideoElement;
+      console.error(`[VideoBg:${videoId}] ERROR:`, target.error);
+    };
+
+    video.addEventListener('loadedmetadata', onLoadedMetadata);
+    video.addEventListener('error', onError);
+    
+    if (video.readyState >= 1) {
+      onLoadedMetadata();
+    }
+
+    return () => {
+      video.removeEventListener('loadedmetadata', onLoadedMetadata);
+      video.removeEventListener('error', onError);
+      if (scrollTriggerRef.current) scrollTriggerRef.current.kill();
+      if (timelineRef.current) timelineRef.current.kill();
+    };
+  }, [videoSrc, videoId]);
+
+  return (
+    <section id={id} ref={sectionRef} style={{ position: 'relative' }}>
+      {/* Video sticky */}
+      <div style={{
+        position: 'sticky',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100vh',
+        overflow: 'hidden',
+        zIndex: 0,
+      }}>
+        <video
+          ref={videoRef}
+          src={videoSrc}
+          muted
+          playsInline
+          autoPlay={false}
+          preload="auto"
+          {...{ 'webkit-playsinline': 'true' }}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+          }}
+        />
+      </div>
+
+      {/* Contenido sobre el video */}
+      <div style={{
+        position: 'relative',
+        marginTop: '-100vh',
+        zIndex: 1,
+      }}>
+        {children}
+      </div>
+    </section>
+  );
+}
+
+------------------------------------------------------------
+20) LENIS EN MÓVIL (smoothTouch)
+------------------------------------------------------------
+
+Lenis puede causar problemas en móvil. Configuración recomendada:
+
+20.1 Deshabilitar en móvil (recomendado):
+
+export function initLenis() {
+  // Detectar móvil
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  
+  if (isMobile) {
+    console.log('[Lenis] Disabled - using native scroll');
+    return null;  // Usar scroll nativo
+  }
+  
+  const lenis = new Lenis({
+    lerp: 0.10,
+    smoothWheel: true,
+    smoothTouch: false,
+  });
+  
+  lenis.on('scroll', () => ScrollTrigger.update());
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
+  
+  return lenis;
+}
+
+20.2 Cleanup en App.tsx:
+
+export function destroyLenis(lenis: Lenis | null) {
+  if (lenis?.destroy) {
+    lenis.destroy();
+  }
+}
+
+// En useEffect:
+useEffect(() => {
+  const lenis = initLenis();
+  return () => destroyLenis(lenis);
+}, []);
+
+------------------------------------------------------------
+21) ERRORES COMUNES Y SOLUCIONES
+------------------------------------------------------------
+
+21.1 Video negro en iOS:
+- Agregar webkit-playsinline="true"
+- Implementar kickstart play/pause
+- Verificar que video tiene muted y playsInline
+
+21.2 Video "salta" o tiene stuttering:
+- Recodificar con GOP bajo (-g 4)
+- Aumentar scrub value (scrub: 1 en vez de scrub: 0.5)
+- Verificar que video tiene faststart (movflags)
+
+21.3 Video no carga en móvil:
+- Llamar video.load() explícitamente
+- Verificar preload="auto"
+- Revisar tamaño del archivo (< 5MB recomendado)
+
+21.4 ScrollTrigger no funciona:
+- Verificar que trigger element existe en DOM
+- Llamar ScrollTrigger.refresh() después de setup
+- Agregar invalidateOnRefresh: true
+
+21.5 Lenis desincronizado con ScrollTrigger:
+- Verificar lenis.on('scroll', () => ScrollTrigger.update())
+- Asegurar gsap.ticker.lagSmoothing(0)
+
+21.6 Video duration es NaN o 0:
+- Esperar evento 'loadedmetadata' antes de usar duration
+- Verificar que video existe en la ruta correcta
+
+------------------------------------------------------------
+22) GITHUB PAGES DEPLOYMENT
+------------------------------------------------------------
+
+22.1 Instalar gh-pages:
+
+npm install -D gh-pages
+
+22.2 Agregar script en package.json:
+
+"scripts": {
+  "deploy": "npm run build && npx gh-pages -d dist"
+}
+
+22.3 Configurar base en vite.config.ts (si repo no es root):
+
+export default defineConfig({
+  base: '/nombre-del-repo/',
+  // ...
+});
+
+22.4 Helper para assets:
+
+// src/app/lib/asset.ts
+const BASE_PATH = import.meta.env.BASE_URL || '/';
+
+export function withBase(path: string): string {
+  const base = BASE_PATH.endsWith('/') ? BASE_PATH.slice(0, -1) : BASE_PATH;
+  const p = path.startsWith('/') ? path : '/' + path;
+  return base + p;
+}
+
+// Uso:
+<video src={withBase('media/video/hero_a.mp4')} />
+
+------------------------------------------------------------
+23) CHECKLIST PRE-DEPLOY iOS
+------------------------------------------------------------
+
+□ Videos recodificados con GOP bajo (-g 4)
+□ Videos tienen faststart (movflags)
+□ Componente tiene muted, playsInline, autoPlay={false}
+□ webkit-playsinline="true" agregado
+□ video.load() llamado si readyState < 1
+□ Kickstart play/pause implementado
+□ Evento 'error' monitoreado
+□ Logs de debug agregados (remover para producción)
+□ Lenis deshabilitado en móvil (smoothTouch: false o null)
+□ ScrollTrigger.refresh() llamado después de setup
+□ vConsole removido para producción final
+
+------------------------------------------------------------
+24) TAMAÑOS RECOMENDADOS DE VIDEO
+------------------------------------------------------------
+
+Para web responsive con scrubbing:
+
+- Resolución: 1024x1024 o 1280x720 (máximo)
+- Duración: 4-8 segundos (ideal para scrub)
+- Framerate: 15-24 fps (suficiente para scrub)
+- Bitrate: 1.5-2.5 Mbps
+- Tamaño final: < 5MB por video
+- Codec: H.264 Baseline o Main
+- Pixel format: yuv420p
+
+Si el video es muy pesado:
+- Reducir resolución
+- Reducir framerate
+- Reducir duración
+- Aumentar compresión (menor calidad visual)
+
+------------------------------------------------------------
+25) SCRIPT DE RECODIFICACIÓN BATCH
+------------------------------------------------------------
+
+#!/bin/bash
+# recodificar_para_scrub.sh
+
+INPUT_DIR="./videos_originales"
+OUTPUT_DIR="./public/media/video"
+
+mkdir -p "$OUTPUT_DIR"
+
+for file in "$INPUT_DIR"/*.mp4; do
+  filename=$(basename "$file")
+  echo "Procesando: $filename"
+  
+  ffmpeg -y -i "$file" \
+    -c:v libopenh264 \
+    -g 4 \
+    -keyint_min 4 \
+    -pix_fmt yuv420p \
+    -movflags +faststart \
+    -an \
+    "$OUTPUT_DIR/$filename"
+done
+
+echo "✓ Todos los videos procesados"
+
+------------------------------------------------------------
+# FIN DE LA GUÍA
+------------------------------------------------------------
+
+Última actualización: 2026-01-15
+Incluye: iOS Safari compatibility, video encoding for scrubbing,
+         mobile debugging, Lenis mobile config, deployment tips.
