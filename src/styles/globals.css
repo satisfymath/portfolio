@@ -148,6 +148,7 @@ video {
     height: 48px;
     padding: 0 24px;
     border-radius: 999px;
+    border: 1px solid transparent;
     background: var(--accent);
     color: #07110C;
     font-weight: 600;
