@@ -141,7 +141,7 @@ export function ProjectModal({ project, onClose }: Props) {
 
         {/* Seniority Signals */}
         <div className="modal-section">
-          <h3 className="modal-section-title mono">// SEÑALES DE SENIORITY</h3>
+          <h3 className="modal-section-title mono">// ENFOQUE TÉCNICO</h3>
           <ul className="modal-signals">
             {project.senioritySignals.map((signal, i) => (
               <li key={i} className="modal-signal">
