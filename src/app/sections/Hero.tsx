@@ -25,28 +25,29 @@ export function Hero() {
     return (
         <Section id="hero">
             <div ref={contentRef} className="hero-content container">
-                <div className="hero-eyebrow dots">00 / INTRO</div>
+                <div className="hero-eyebrow dots">DAVID ASTUDILLO M.</div>
 
                 <h1 className="hero-headline h1">
-                    Software · Datos · Automatización
+                    Data Science · ML · Automatización
                 </h1>
 
                 <p className="hero-sub">
-                    Construyo sistemas que reducen fricción operativa y escalan decisiones con datos.
-                    Consultoría de software en Chile.
+                    Construyo sistemas de datos, modelos predictivos y automatizaciones con LLMs
+                    que reducen fricción operativa y escalan decisiones. Consultoría especializada en Chile.
                 </p>
 
                 <div className="hero-tags">
-                    <span className="tag">Web Apps</span>
+                    <span className="tag">ML & Analytics</span>
+                    <span className="tag">LLM & RAG</span>
                     <span className="tag">Scraping</span>
                     <span className="tag">n8n</span>
-                    <span className="tag">ML</span>
-                    <span className="tag">Optimización</span>
+                    <span className="tag">FastAPI</span>
+                    <span className="tag">React</span>
                 </div>
 
                 <div className="hero-ctas">
                     <a href="#contact" className="btn-primary">Hablemos</a>
-                    <a href="#projects" className="btn-ghost">Ver proyectos →</a>
+                    <a href="#projects" className="btn-ghost">Ver 17 proyectos →</a>
                 </div>
             </div>
         </Section>

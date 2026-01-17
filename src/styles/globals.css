@@ -1,4 +1,6 @@
 @import "./tokens.css";
+@import "./projects.css";
+@import "./scrollbar_fix.css";
 
 /* =========================================
    Reset & Base
@@ -287,6 +289,7 @@ video {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
+    align-items: center;
 }
 
 @media (max-width: 640px) {
@@ -422,25 +425,19 @@ video {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 120px 0;
+    padding: clamp(80px, 15vh, 160px) 0;
 }
 
-.contact-box {
-    margin-top: 32px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: rgba(12, 14, 18, 0.8);
-    backdrop-filter: blur(12px);
-    padding: 32px;
-    max-width: 520px;
+.contact-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
-.contact-item {
-    margin-bottom: 24px;
-}
-
-.contact-item:last-child {
-    margin-bottom: 0;
+.contact-index {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1;
 }
 
 .contact-label {
@@ -449,7 +446,37 @@ video {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--muted);
-    margin-bottom: 6px;
+}
+
+.contact-title {
+    margin-bottom: 24px;
+    line-height: 1.1;
+}
+
+.contact-subtitle {
+    color: var(--muted);
+    font-size: 1.125rem;
+    line-height: 1.7;
+    max-width: 560px;
+    margin-bottom: 40px;
+}
+
+.contact-box {
+    margin-bottom: 40px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: rgba(12, 14, 18, 0.8);
+    backdrop-filter: blur(12px);
+    padding: 32px;
+    max-width: 520px;
+    display: grid;
+    gap: 24px;
+}
+
+.contact-item {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .contact-value {
@@ -459,6 +486,31 @@ video {
 
 .contact-value a {
     color: var(--accent);
+    transition: opacity 0.2s ease;
+}
+
+.contact-value a:hover {
+    opacity: 0.8;
+}
+
+.contact-cta {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 48px;
+}
+
+.contact-footer {
+    padding-top: 32px;
+    border-top: 1px solid var(--line);
+    max-width: 520px;
+    color: var(--muted);
+    font-size: var(--text-sm);
+}
+
+@media (max-width: 600px) {
+    .contact-cta {
+        flex-direction: column;
+    }
 }
 
 /* =========================================
