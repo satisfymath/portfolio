@@ -24,7 +24,7 @@ export function VideoShowcase() {
                         Construyo sistemas que reducen fricción operativa y escalan decisiones con datos.
                         Consultoría de software en Chile.
                     </p>
-                    <div style={{ marginTop: 40, display: 'flex', gap: 16 }}>
+                    <div style={{ marginTop: 40, display: 'flex', gap: 16, alignItems: 'center' }}>
                         <a href="#proof" className="btn-primary">Hablemos</a>
                         <a href="#projects" className="btn-ghost">Ver proyectos →</a>
                     </div>

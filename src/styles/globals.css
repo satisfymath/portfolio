@@ -293,6 +293,10 @@ video {
     align-items: center;
 }
 
+.hero-ctas .btn-ghost {
+    transform: translateY(20px);
+}
+
 @media (max-width: 640px) {
     .hero-content {
         padding: 120px 0 80px;
